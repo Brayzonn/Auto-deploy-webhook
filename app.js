@@ -28,7 +28,6 @@ const limiter = rateLimit({
   message: 'Too many requests from this IP, please try again later'
 });
 
-// Signature verification function
 function verifySignature(payload, signature, secret) {
   if (!signature) return false;
   const sig = signature.split('=')[1];
@@ -44,9 +43,9 @@ function verifySignature(payload, signature, secret) {
 
 // Middleware
 app.use(express.json({ limit: '1mb' }));
-app.use('/webhook', limiter);
+app.use('/githubwebhook', limiter);
 
-app.post('/webhook', (req, res) => {
+app.post('/githubwebhook', (req, res) => {
   const signature = req.headers['x-hub-signature-256'];
   const event = req.headers['x-github-event'];
   const payload = req.body;
