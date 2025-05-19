@@ -37,12 +37,21 @@ A secure, production-ready Node.js server that automates deployments from GitHub
    nano .env  
    ```
 
-4. Set up your deployment script:
+4. Set up your re-deployment script:
    ```bash
-   nano scripts/deploy.sh  
-   chmod +x scripts/deploy.sh
+   # Create scripts directory in your preferred location
+   mkdir -p ~/scripts
+   
+   # Create and edit the deployment script
+   nano ~/scripts/redeploy.sh
+   
+   # Make the script executable
+   chmod +x ~/scripts/redeploy.sh
+   
+   # Note the full path for your .env file
+   echo "Your script path is: $(realpath ~/scripts/redeploy.sh)"  
    ```
-
+   
 5. Start the server:
    ```bash
    # For development
@@ -68,8 +77,8 @@ PORT=9000
 # Security
 WEBHOOK_SECRET=your_github_webhook_secret_here
 
-# Deployment
-DEPLOY_SCRIPT_PATH=/absolute/path/to/scripts/deploy.sh
+# Re-deployment
+RE_DEPLOY_SCRIPT_PATH=/absolute/path/to/scripts/deploy.sh
 ALLOWED_BRANCHES=main,production,staging
 ```
 
@@ -127,12 +136,11 @@ ALLOWED_BRANCHES=main,production,staging
    yourusername ALL=(ALL) NOPASSWD: /bin/systemctl restart nginx
    ```
 
-7. Now you can use `systemctl --user start nginx-restart.service` in your deployment script instead of directly using sudo.
+7. Now you can use `systemctl --user start nginx-restart.service` in your re-deployment script instead of directly using sudo.
 
 
-## Creating a Deployment Script
-
-Create a deployment script at the path specified in your `DEPLOY_SCRIPT_PATH`. Here's an example:
+## Creating a Re-deployment Script
+For automatic redeployment of your React TypeScript Vite application whenever you push to GitHub, create a dedicated script as follows:
 
 ```bash
 #variables
@@ -146,7 +154,7 @@ RED='\033[0;31m'
 YELLOW='\033[0;33m'
 NC='\033[0m' 
 
-echo -e "${YELLOW}Starting deployment process...${NC}"
+echo -e "${YELLOW}Starting re-deployment process...${NC}"
 
 echo -e "${YELLOW}Navigating to repository directory...${NC}"
 cd $REPO_DIR || { echo -e "${RED}Failed to change directory to $REPO_DIR${NC}"; exit 1; }
@@ -185,7 +193,7 @@ cp -r dist/* $WEB_ROOT/ || { echo -e "${RED}Failed to copy files to web root${NC
 echo -e "${YELLOW}Restarting Nginx...${NC}"
 systemctl --user start nginx-restart.service
 
-echo -e "${GREEN}Deployment completed successfully!${NC}"
+echo -e "${GREEN}Re-deployment completed successfully!${NC}"
 ```
 
 Make sure to adapt this script to your specific needs.
@@ -198,7 +206,7 @@ Make sure to adapt this script to your specific needs.
    openssl rand -hex 20
    ```
 
-2. **Limited Permissions**: Run your deployment script with the minimum necessary permissions.
+2. **Limited Permissions**: Run your re-deployment script with the minimum necessary permissions.
 
 3. **Secure Server Access**: Ensure your server has proper firewall rules and only accepts HTTPS connections.
 
@@ -210,7 +218,7 @@ Make sure to adapt this script to your specific needs.
 2. Verify your server is accessible from the internet
 3. Ensure your `WEBHOOK_SECRET` matches the one in GitHub
 
-### Deployment Script Failing
+### Re-deployment Script Failing
 
 1. Run the script manually to see if it works
 2. Check for permission issues with file directories
