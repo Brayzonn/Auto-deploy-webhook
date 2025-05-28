@@ -12,28 +12,22 @@ const PORT = process.env.PORT || 9000;
 
 const WEBHOOK_SECRET = process.env.WEBHOOK_SECRET;
 const ALLOWED_BRANCHES = (process.env.ALLOWED_BRANCHES || 'main,master').split(',');
+const DEPLOYMENT_SCRIPT = process.env.DEPLOYMENT_SCRIPT;
 
-const REPO_SCRIPTS = {};
-
-for (const [key, value] of Object.entries(process.env)) {
-  if (key.startsWith('REPO_SCRIPT_')) {
-    const repoName = key.replace('REPO_SCRIPT_', '').replace('_', '/');
-    REPO_SCRIPTS[repoName] = value;
-  }
-}
-
-const DEPLOYMENT_SCRIPTS = {...REPO_SCRIPTS };
-
+//helper functions
 if (!WEBHOOK_SECRET) {
   console.error('WEBHOOK_SECRET environment variable is required');
   process.exit(1);
+} 
+
+if (!DEPLOYMENT_SCRIPT) {
+  console.error('DEPLOYMENT_SCRIPT environment variable is required');
+  process.exit(1);
 }
 
-for (const [repo, scriptPath] of Object.entries(DEPLOYMENT_SCRIPTS)) {
-  if (!fs.existsSync(scriptPath) || !isValidScriptPath(scriptPath)) {
-    console.error(`Invalid script path for repository ${repo}: ${scriptPath}`);
-    process.exit(1);
-  }
+if (!fs.existsSync(DEPLOYMENT_SCRIPT) || !isValidScriptPath(DEPLOYMENT_SCRIPT)) {
+  console.error(`Invalid deployment script path: ${DEPLOYMENT_SCRIPT}`);
+  process.exit(1);
 }
 
 const limiter = rateLimit({
@@ -77,6 +71,7 @@ function verifyGitHubSignature(req) {
     return false;
   }
 }
+
 
 app.use('/githubwebhook', limiter);
 
@@ -122,12 +117,8 @@ app.post('/githubwebhook', (req, res) => {
     const repoFullName = payload.repository.full_name; 
     const branch = payload.ref.replace('refs/heads/', ''); 
     
-    const deployScriptPath = DEPLOYMENT_SCRIPTS[repoFullName];
-    
-    if (!deployScriptPath) {
-      console.log(`No deployment script configured for repository: ${repoFullName}`);
-      return res.status(200).send(`No deployment configured for ${repoFullName}`);
-    }
+    const deployScriptPath = DEPLOYMENT_SCRIPT;
+    console.log(`Using deployment script: ${deployScriptPath}`);
     
     if (!ALLOWED_BRANCHES.includes(branch)) {
       console.log(`Ignoring push to ${branch} branch for ${repoFullName}`);
@@ -180,15 +171,8 @@ app.listen(PORT, () => {
   console.log(`GitHub Webhook Deployer listening on port ${PORT}`);
   console.log(`Webhook endpoint: http://localhost:${PORT}/githubwebhook`);
   console.log(`Allowed branches: ${ALLOWED_BRANCHES.join(', ')}`);
-  console.log('\nConfigured repositories:');
-
-  if (Object.keys(DEPLOYMENT_SCRIPTS).length === 0) {
-    console.log('  No repositories configured!');
-  } else {
-    for (const [repo, script] of Object.entries(DEPLOYMENT_SCRIPTS)) {
-      console.log(`  ${repo} -> ${script}`);
-    }
-  }
+  console.log(`\nDeployment script: ${DEPLOYMENT_SCRIPT}`);
+  console.log('All repositories will use this single deployment script');
 });
 
 process.on('uncaughtException', (err) => {
