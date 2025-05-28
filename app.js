@@ -13,10 +13,8 @@ const PORT = process.env.PORT || 9000;
 const WEBHOOK_SECRET = process.env.WEBHOOK_SECRET;
 const ALLOWED_BRANCHES = (process.env.ALLOWED_BRANCHES || 'main,master').split(',');
 
-// Initialize empty object to store repository-to-script mappings
 const REPO_SCRIPTS = {};
 
-// Load repository configurations from environment variables
 for (const [key, value] of Object.entries(process.env)) {
   if (key.startsWith('REPO_SCRIPT_')) {
     const repoName = key.replace('REPO_SCRIPT_', '').replace('_', '/');
@@ -24,16 +22,13 @@ for (const [key, value] of Object.entries(process.env)) {
   }
 }
 
-// Final deployment scripts mapping
 const DEPLOYMENT_SCRIPTS = {...REPO_SCRIPTS };
 
-// Validate webhook secret is configured
 if (!WEBHOOK_SECRET) {
   console.error('WEBHOOK_SECRET environment variable is required');
   process.exit(1);
 }
 
-// Validate all configured script paths exist and are safe
 for (const [repo, scriptPath] of Object.entries(DEPLOYMENT_SCRIPTS)) {
   if (!fs.existsSync(scriptPath) || !isValidScriptPath(scriptPath)) {
     console.error(`Invalid script path for repository ${repo}: ${scriptPath}`);
@@ -41,14 +36,12 @@ for (const [repo, scriptPath] of Object.entries(DEPLOYMENT_SCRIPTS)) {
   }
 }
 
-// Rate limiting middleware 
 const limiter = rateLimit({
   windowMs: 15 * 60 * 1000, 
   max: 10, 
   message: 'Too many requests from this IP, please try again later'
 });
 
-// Validate script path function
 function isValidScriptPath(scriptPath) {
   if (/[;&|`$<>]/.test(scriptPath)) {
     return false;
@@ -57,7 +50,6 @@ function isValidScriptPath(scriptPath) {
   return path.isAbsolute(normalizedPath);
 }
 
-// Verify webhook payload signature from GitHub
 function verifyGitHubSignature(req) {
   const signature = req.headers['x-hub-signature-256'];
   
@@ -86,10 +78,8 @@ function verifyGitHubSignature(req) {
   }
 }
 
-// rate limiting for webhook endpoint
 app.use('/githubwebhook', limiter);
 
-// Middleware to capture raw request body for signature verification
 app.use('/githubwebhook', (req, res, next) => {
   getRawBody(req, {
     length: req.headers['content-length'],
@@ -102,10 +92,8 @@ app.use('/githubwebhook', (req, res, next) => {
   });
 });
 
-// Parse JSON bodies with 1MB limit
 app.use(express.json({ limit: '1mb' }));
 
-// Main webhook handler endpoint
 app.post('/githubwebhook', (req, res) => {
   const event = req.headers['x-github-event'];
   const deliveryId = req.headers['x-github-delivery'] || 'unknown'; 
@@ -188,7 +176,6 @@ app.post('/githubwebhook', (req, res) => {
   return res.status(200).send(`Received ${event} event, but no action taken`);
 });
 
-// Start the server
 app.listen(PORT, () => {
   console.log(`GitHub Webhook Deployer listening on port ${PORT}`);
   console.log(`Webhook endpoint: http://localhost:${PORT}/githubwebhook`);
@@ -204,7 +191,6 @@ app.listen(PORT, () => {
   }
 });
 
-// Global error handlers to prevent server crashes
 process.on('uncaughtException', (err) => {
   console.error('Uncaught exception:', err);
 });
