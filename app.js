@@ -10,9 +10,9 @@ const getRawBody = require('raw-body');
 const app = express();
 const PORT = process.env.PORT || 9000;
 
-const WEBHOOK_SECRET = process.env.WEBHOOK_SECRET;
-const ALLOWED_BRANCHES = (process.env.ALLOWED_BRANCHES || 'main,master').split(',');
-const DEPLOYMENT_SCRIPT = process.env.DEPLOYMENT_SCRIPT;
+const WEBHOOK_SECRET    =  process.env.WEBHOOK_SECRET;
+const ALLOWED_BRANCHES  =  (process.env.ALLOWED_BRANCHES || 'main,master').split(',');
+const DEPLOYMENT_SCRIPT =  process.env.DEPLOYMENT_SCRIPT;
 
 //helper functions
 if (!WEBHOOK_SECRET) {
