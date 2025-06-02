@@ -1,15 +1,17 @@
 # GitHub Webhook Deployer
 
-A secure, production-ready Node.js server that automates deployments from GitHub using webhooks. When code is pushed to your repository, this server automatically deploys your changes to your server.
+A secure, production-ready Node.js server that automates deployments from GitHub using webhooks. When code is pushed to your repository, this server automatically deploys the changes to your server using a single, configurable deployment script.
 
 ## Features
 
-- 🔒 **Secure**: Verifies GitHub webhook signatures to prevent unauthorized deployments
-- 🚀 **Flexible**: Supports multiple branches and repositories
-- 🛡️ **Protected**: Includes rate limiting to prevent abuse
-- 📦 **Lightweight**: Minimal dependencies and resource usage
-- 🔍 **Transparent**: Detailed logging for troubleshooting
-- 🧩 **Configurable**: Easy environment-based configuration
+- **Secure**: Verifies GitHub webhook signatures to prevent unauthorized deployments
+- **Flexible**: Supports multiple branches and repositories
+- **Protected**: Includes rate limiting to prevent abuse
+- **Lightweight**: Minimal dependencies and resource usage
+- **Transparent**: Detailed logging for troubleshooting
+- **Configurable**: Easy environment-based configuration
+- **Multi-repo**: Single deployment script handles all repositories with contextual environment variables
+
 
 ## Prerequisites
 
@@ -33,35 +35,28 @@ A secure, production-ready Node.js server that automates deployments from GitHub
 
 3. Create a configuration file:
    ```bash
-   cp .env.example .env
    nano .env  
    ```
 
-4. Set up your re-deployment script:
+4. Set up your deployment script:
    ```bash
    # Create scripts directory in your preferred location
    mkdir -p ~/scripts
    
    # Create and edit the deployment script
-   nano ~/scripts/redeploy.sh
+   nano ~/scripts/deploy.sh
    
    # Make the script executable
-   chmod +x ~/scripts/redeploy.sh
+   chmod +x ~/scripts/deploy.sh
    
    # Note the full path for your .env file
-   echo "Your script path is: $(realpath ~/scripts/redeploy.sh)"  
+   echo "Your script path is: $(realpath ~/scripts/deploy.sh)"  
    ```
    
 5. Start the server:
    ```bash
    # For development
    npm run dev
-
-   # For production (using PM2)
-   npm install -g pm2
-   pm2 start app.js --name "github-webhook"
-   pm2 save
-   pm2 startup
    ```
 
 ## Configuration
@@ -72,14 +67,14 @@ Create a `.env` file with the following variables:
 
 ```env
 # Server configuration
-PORT=9000
+PORT=your_port_number*
 
 # Security
 WEBHOOK_SECRET=your_github_webhook_secret_here
 
-# Re-deployment
-RE_DEPLOY_SCRIPT_PATH=/absolute/path/to/scripts/deploy.sh
-ALLOWED_BRANCHES=main,production,staging
+# Deployment
+DEPLOYMENT_SCRIPT=/absolute/path/to/scripts/deploy.sh
+ALLOWED_BRANCHES=main,master
 ```
 
 ### GitHub Webhook Setup
@@ -136,67 +131,57 @@ ALLOWED_BRANCHES=main,production,staging
    yourusername ALL=(ALL) NOPASSWD: /bin/systemctl restart nginx
    ```
 
-7. Now you can use `systemctl --user start nginx-restart.service` in your re-deployment script instead of directly using sudo.
+7. Now you can use `systemctl --user start nginx-restart.service` in your deployment script.
 
 
-## Creating a Re-deployment Script
-For automatic redeployment of your React TypeScript Vite application whenever you push to GitHub, create a dedicated script as follows:
+## Creating a deployment Script
+The webhook server passes contextual information about the GitHub event to your deployment script through environment variables. Your script can access:
+
+- GITHUB_REPO_FULL_NAME: Full repository name (e.g., "username/repo-name")
+- GITHUB_REPO_NAME: Repository name only
+- GITHUB_REPO_OWNER: Repository owner username
+- GITHUB_BRANCH: Branch that was pushed to
+- GITHUB_COMMIT: Full commit hash
+- GITHUB_PUSHER: Username of the person who pushed
+
+
+### Example Deployment Script
+
+For a complete, production-ready deployment script that handles multiple project types and repositories, see the example script in my repository:
+
+**[View Complete Deployment Script Example](https://github.com/Brayzonn/github-webhook-deployer/blob/main/deploy.sh)**
+
+This example script demonstrates:
+- Multi-repository configuration
+- Different project types (CLIENT, API_JS, API_TS)
+- Full-stack and API-only deployment handling
+- Comprehensive error handling and logging
+- Real-world deployment scenarios
+
+### Basic Script Structure
+
+Here's the basic structure for accessing the GitHub context variables:
 
 ```bash
-#variables
-REPO_DIR="/home/your-username/your-project"       # Local path to your cloned Git repository
-WEB_ROOT="/var/www/html/your-project-name"        # Web server's public root for the project
-BRANCH="main"                                      # Git branch to deploy from
-                        
+#!/bin/bash
 
-GREEN='\033[0;32m'
-RED='\033[0;31m'
-YELLOW='\033[0;33m'
-NC='\033[0m' 
+# GitHub context variables (automatically provided by webhook server)
+echo "Deploying: ${GITHUB_REPO_FULL_NAME}"
+echo "Branch: ${GITHUB_BRANCH}"
+echo "Commit: ${GITHUB_COMMIT:0:7}"
+echo "Pushed by: ${GITHUB_PUSHER}"
 
-echo -e "${YELLOW}Starting re-deployment process...${NC}"
-
-echo -e "${YELLOW}Navigating to repository directory...${NC}"
-cd $REPO_DIR || { echo -e "${RED}Failed to change directory to $REPO_DIR${NC}"; exit 1; }
-
-
-#github and local repo update
-echo -e "${YELLOW}Fetching latest changes from GitHub...${NC}"
-git fetch || { echo -e "${RED}Failed to fetch from GitHub${NC}"; exit 1; }
-
-LOCAL=$(git rev-parse @)
-REMOTE=$(git rev-parse origin/$BRANCH)
-
-if [ $LOCAL = $REMOTE ]; then
-    echo -e "${GREEN}No changes to deploy. Your site is up to date!${NC}"
-    exit 0
-fi
-
-echo -e "${YELLOW}Pulling latest changes from GitHub...${NC}"
-git pull origin $BRANCH || { echo -e "${RED}Failed to pull from GitHub${NC}"; exit 1; }
-
-echo -e "${YELLOW}Navigating to client directory...${NC}"
-cd client || { echo -e "${RED}Failed to change directory to client${NC}"; exit 1; }
-
-echo -e "${YELLOW}Installing dependencies...${NC}"
-npm install || { echo -e "${RED}Failed to install dependencies${NC}"; exit 1; }
-
-echo -e "${YELLOW}Building the application...${NC}"
-npm run build || { echo -e "${RED}Failed to build the application${NC}"; exit 1; }
-
-echo -e "${YELLOW}Clearing existing files...${NC}"
-rm -rf $WEB_ROOT/* || { echo -e "${RED}Failed to clear web root directory${NC}"; exit 1; }
-
-echo -e "${YELLOW}Copying build files to web root...${NC}"
-cp -r dist/* $WEB_ROOT/ || { echo -e "${RED}Failed to copy files to web root${NC}"; exit 1; }
-
-echo -e "${YELLOW}Restarting Nginx...${NC}"
-systemctl --user start nginx-restart.service
-
-echo -e "${GREEN}Re-deployment completed successfully!${NC}"
+# Your deployment logic here based on repository name
+case "$GITHUB_REPO_NAME" in
+    "your-repo-name")
+        # Repository-specific deployment steps
+        ;;
+    *)
+        echo "Unknown repository: $GITHUB_REPO_NAME"
+        exit 1
+        ;;
+esac
 ```
-
-Make sure to adapt this script to your specific needs.
 
 ## Security Considerations
 
@@ -206,9 +191,13 @@ Make sure to adapt this script to your specific needs.
    openssl rand -hex 20
    ```
 
-2. **Limited Permissions**: Run your re-deployment script with the minimum necessary permissions.
+2. **Script Path Validation**: The server validates deployment script paths to prevent command injection.
 
-3. **Secure Server Access**: Ensure your server has proper firewall rules and only accepts HTTPS connections.
+3. **Rate Limiting**: Built-in rate limiting prevents abuse (10 requests per 15 minutes per IP).
+
+4. **Limited Permissions**: Run your deployment script with the minimum necessary permissions.
+
+5. **Secure Server Access**: Ensure your server has proper firewall rules and only accepts HTTPS connections.
 
 ## Troubleshooting
 
@@ -217,13 +206,23 @@ Make sure to adapt this script to your specific needs.
 1. Check GitHub webhook delivery logs in your repository settings
 2. Verify your server is accessible from the internet
 3. Ensure your `WEBHOOK_SECRET` matches the one in GitHub
+4. Check server logs for delivery IDs and error messages
 
-### Re-deployment Script Failing
+### Deployment Script Failing
 
-1. Run the script manually to see if it works
+1. Run the script manually with the same environment variables:
+   ```bash
+   GITHUB_REPO_FULL_NAME="username/repo" \
+   GITHUB_REPO_NAME="repo" \
+   GITHUB_BRANCH="main" \
+   GITHUB_COMMIT="abc123..." \
+   GITHUB_PUSHER="username" \
+   bash /path/to/your/deploy.sh
+   ```
 2. Check for permission issues with file directories
-3. Examine the logs from the webhook server
-4. Add more detailed error output to your script
+3. Examine the webhook server logs for detailed error output
+4. Verify the `DEPLOYMENT_SCRIPT` path is absolute and executable
+
 
 ## License
 
