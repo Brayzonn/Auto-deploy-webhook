@@ -33,6 +33,7 @@ lerna-debug.log*
 *.sw?
 
 test.sh
+refresh.sh
 
 
 
