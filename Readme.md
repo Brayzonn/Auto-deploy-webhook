@@ -2,6 +2,8 @@
 
 A secure, production-ready Node.js/Express server that automates deployments from GitHub using webhooks. When code is pushed to your repository, this server automatically deploys the changes to your server using a single, configurable deployment script.
 
+![Deployment Flow](https://raw.githubusercontent.com/brayzonn/Auto-deploy-webhook/main/assets/flowchart.png)
+
 ## Features
 
 - **Secure**: Verifies GitHub webhook signatures to prevent unauthorized deployments
