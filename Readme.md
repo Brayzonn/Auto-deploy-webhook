@@ -1,6 +1,6 @@
-# GitHub Webhook Deployer
+# Auto-deploy-webhook
 
-A secure, production-ready Node.js server that automates deployments from GitHub using webhooks. When code is pushed to your repository, this server automatically deploys the changes to your server using a single, configurable deployment script.
+A secure, production-ready Node.js/Express server that automates deployments from GitHub using webhooks. When code is pushed to your repository, this server automatically deploys the changes to your server using a single, configurable deployment script.
 
 ## Features
 
